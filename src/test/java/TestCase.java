@@ -1,6 +1,8 @@
 import org.openqa.selenium.*;
 import org.openqa.selenium.edge.EdgeDriver;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
@@ -8,6 +10,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -16,7 +19,6 @@ public class TestCase {
     private WebDriver driver;
     private final String shopWebsite = "https://demo.opencart.com/";
     private final String automationPracticeUrl = "https://testautomationpractice.blogspot.com/";
-    private final String authPageUrl = "https://testpages.eviltester.com/styled/auth/basic-auth-results.html";
 
     @BeforeTest
     void setUp() {
@@ -86,7 +88,7 @@ public class TestCase {
         for (String windowHandle : windowHandles) {
             driver.switchTo().window(windowHandle);
             System.out.println(driver.getCurrentUrl());
-            if (driver.getCurrentUrl().equals("https://www.google.com/")) {
+            if (Objects.equals(driver.getCurrentUrl(), "https://www.google.com/")) {
                 driver.close();
             }
         }
@@ -120,9 +122,6 @@ public class TestCase {
         WebElement userInput =  wait.until(ExpectedConditions.visibilityOfElementLocated(By.name("username")));
         userInput.sendKeys("user");
         driver.findElement(By.name("password")).sendKeys("password");
-        WebElement loginBtn = wait.until(
-                ExpectedConditions.elementToBeClickable(By.xpath("//button[normalize-space()='Login']"))
-        );
     }
 
     @Test
@@ -192,5 +191,117 @@ public class TestCase {
         driver.switchTo().frame(fifthFrame);
         WebElement link = driver.findElement(By.tagName("a"));
         Assert.assertTrue(link.isDisplayed());
+    }
+
+    @Test
+    void testDropdowns() {
+        driver.get(automationPracticeUrl);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement countrySelector = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("country")));
+        Select countryList = new Select(countrySelector);
+        List<WebElement> countries = countryList.getOptions();
+        for (WebElement country : countries) {
+            System.out.println("Country: " + country.getText());
+        }
+        countryList.selectByValue("japan");
+        Assert.assertTrue(driver.findElement(By.xpath("//option[@value='japan']")).isSelected());
+    }
+
+    @Test
+    void testBootstrapDropdown() {
+        driver.get("https://www.w3schools.com/bootstrap/bootstrap_dropdowns.asp");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("accept-choices"))).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("menu1"))).click();
+        driver.findElement(By.xpath("//li/a[text()='HTML']")).click();
+    }
+
+    @Test
+    void testAutoSuggestDropdown() {
+        driver.get("https://google.com");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("button[id='L2AGLb']"))).click();
+        driver.findElement(By.cssSelector("textarea[name=q]")).sendKeys("selenium");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//ul[@role='listbox']/li[2]"))).click();
+    }
+
+    @Test
+    void testWebTables() {
+        driver.get("https://testautomationpractice.blogspot.com/");
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+        int rowsSize = driver.findElements(By.xpath("//table[@name='BookTable']//tr")).size();
+        int columnsSize = driver.findElements(By.xpath("//table[@name='BookTable']//tr/th")).size();
+        for (int i = 1; i < columnsSize; i++) {
+            for (int j = 2; j < rowsSize; j++) {
+                String tableText = driver.
+                        findElement(By.xpath(String.format("//table[@name='BookTable']//tr[%d]/td[%d]", j, i))).getText();
+                System.out.println(tableText);
+            }
+            System.out.print("\n");
+        }
+    }
+
+    @Test
+    void testDatePickers() {
+        LocalDate expectedDate = LocalDate.of(2025, 3, 17);
+        int expectedYear = expectedDate.getYear();
+        String expectedMonth = expectedDate.getMonth().toString();
+        int expectedDay = expectedDate.getDayOfMonth();
+
+        driver.get("https://jqueryui.com/datepicker/");
+        driver.switchTo().frame(driver.findElement(By.className("demo-frame")));
+        By forwardLocator = By.xpath("//a[@data-handler='next']");
+        By backLocator = By.xpath("//a[@data-handler='prev']");
+        By directionLocator = expectedDate.isAfter(LocalDate.now()) ? forwardLocator: backLocator;
+        By dayLocator = By.xpath(String.format("//td[@data-handler='selectDay']/a[@data-date='%d']", expectedDay));
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("datepicker"))).click();
+
+        while (true) {
+            String currentMonth = driver.
+                    findElement(By.xpath("//div[@class='ui-datepicker-title']/span[1]")).
+                    getText().toUpperCase();
+            int currentYear = Integer.parseInt(driver.
+                    findElement(By.xpath("//div[@class='ui-datepicker-title']/span[2]")).getText());
+            if (currentYear == expectedYear && currentMonth.equals(expectedMonth)) {
+                break;
+            }
+            else {
+                driver.findElement(directionLocator).click();
+            }
+        }
+        driver.findElement(dayLocator).click();
+    }
+
+    @Test
+    void testMouseOperations() {
+        driver.get("https://testautomationpractice.blogspot.com/");
+        WebElement source = driver.findElement(By.xpath("//p[text()='Drag me to my target']"));
+        WebElement target = driver.findElement(By.xpath("//p[text()='Drop here']"));
+        Actions actions = new Actions(driver);
+        actions
+                .scrollToElement(driver.findElement(By.id("draggable")))
+                .dragAndDrop(source, target)
+                .perform();
+        String txt = driver.findElement(By.id("droppable")).getText();
+        Assert.assertEquals(txt, "Dropped!");
+    }
+
+    @Test
+    void testJsExecutor() {
+        // JS Executor is an interface, can be used when standard methods lead to ElementInterceptedException
+        // we can also perform some other actions such as zoom in/out, scroll to view etc
+        driver.get("https://testautomationpractice.blogspot.com/");
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(10));
+        WebElement inputBox = driver.findElement(By.id("name"));
+        JavascriptExecutor javascriptExecutor = (JavascriptExecutor) driver;
+        WebElement button = driver.findElement(By.name("start"));
+        javascriptExecutor.executeScript("arguments[0].click", button);
+        javascriptExecutor.executeScript("arguments[0].setAttribute('value', 'John')", inputBox);
+        javascriptExecutor.executeScript("scrollTo(0, 2000)");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("comboBox"))).click();
+        driver.findElement(By.xpath("//div[@id='dropdown']/div[text()='Item 11']")).click();
     }
 }
